@@ -1,7 +1,9 @@
+"""Modèle de prédiction du prix du mètre carré danc les communes de la petite couronne"""
 import os
 from pathlib import Path
-
+from dotenv import load_dotenv
 import duckdb
+import argparse
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,15 +35,29 @@ SOURCES = {
 }
 
 
-def download_sources(url, cible):
-    r = requests.get(url, timeout=120)
+def download_sources(adress, target):
+    """télécharge les sources"""
+    r = requests.get(adress, timeout=120)
     r.raise_for_status()
-    with open(cible, "wb") as f:
+    with open(target, "wb") as f:
         f.write(r.content)
 
 
-jetonapi = "1SuperJetonUltraConfidentiel!!!"
+JETON_API = "1SuperJetonUltraConfidentiel!!!"
 
+
+parser = argparse.ArgumentParser(
+    description="Paramétrisation du nombre d'arbres du modèle LightGBM"
+)
+parser.add_argument(
+    "--n_trees",
+    type=int,
+    default=1500,
+    help="Nombre d'arbres du modèle LightGBM"
+)
+args = parser.parse_args()
+
+n_trees = args.n_trees
 
 data_location = Path("data")
 data_location.mkdir(exist_ok=True)
@@ -80,7 +96,7 @@ else:
 
 
 # Vérifie les valeurs manquantes
-# TODO: généraliser à toutes les variables
+# A faire : généraliser à toutes les variables
 n_missing = con.sql("""
     SELECT COUNT(*) AS n_missing
     FROM dvf_attributs
@@ -178,7 +194,7 @@ params = {
     "maxResult": 40000,
 }
 
-headers = {"Authorization": f"Bearer {jetonapi}"}
+headers = {"Authorization": f"Bearer {JETON_API}"}
 
 response = requests.get(url, params=params, headers=headers, timeout=60)
 response.raise_for_status()
@@ -210,7 +226,7 @@ params = {
     "maxResult": 40000,
 }
 
-headers = {"Authorization": f"Bearer {jetonapi}"}
+headers = {"Authorization": f"Bearer {JETON_API}"}
 
 response = requests.get(url, params=params, headers=headers, timeout=60)
 response.raise_for_status()
@@ -380,7 +396,7 @@ _pipe = Pipeline(
         (
             "regressor",
             LGBMRegressor(
-                n_estimators=1500,
+                n_estimators=n_trees,
                 learning_rate=0.03,
                 num_leaves=31,
                 min_child_samples=10,
@@ -404,7 +420,7 @@ X = dvf_start_data[features]
 y = dvf_start_data["prix_m2"]
 # weights = dvf_start_data["code_commune"] + "_" + dvf_start_data["annee"].astype(str)
 
-X_train, X_test, y_train, y_test = train_test_split(
+X_train, X_test, y_train, y_test = train_test_split( # pylint: disable=invalid-name
     X, y, test_size=0.1, random_state=0
 )  # stratify = weights)
 
