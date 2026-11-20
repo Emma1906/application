@@ -43,8 +43,24 @@ def download_sources(adress, target):
         f.write(r.content)
 
 
-JETON_API = "1SuperJetonUltraConfidentiel!!!"
 
+load_dotenv()
+jeton_api = os.environ["JETON_API"]
+
+def check_code_commune_formatting(data: pd.DataFrame) -> bool:
+    """Check that commune codes contain 5 characters and start with the department code."""
+    communes = data["code_commune"].astype("string")
+    departments = data["code_departement"].astype("string")
+
+    valid = [
+        pd.notna(commune)
+        and pd.notna(department)
+        and len(commune) == 5
+        and commune.startswith(department)
+        for commune, department in zip(communes, departments)
+    ]
+
+    return all(valid)
 
 parser = argparse.ArgumentParser(
     description="Paramétrisation du nombre d'arbres du modèle LightGBM"
@@ -194,7 +210,7 @@ params = {
     "maxResult": 40000,
 }
 
-headers = {"Authorization": f"Bearer {JETON_API}"}
+headers = {"Authorization": f"Bearer {jeton_api}"}
 
 response = requests.get(url, params=params, headers=headers, timeout=60)
 response.raise_for_status()
@@ -226,7 +242,7 @@ params = {
     "maxResult": 40000,
 }
 
-headers = {"Authorization": f"Bearer {JETON_API}"}
+headers = {"Authorization": f"Bearer {jeton_api}"}
 
 response = requests.get(url, params=params, headers=headers, timeout=60)
 response.raise_for_status()
