@@ -62,6 +62,19 @@ def check_code_commune_formatting(data: pd.DataFrame) -> bool:
 
     return all(valid)
 
+def check_missing_values(data: pd.DataFrame, column: str) -> int:
+    """count the number of missing value in each column """
+    return int(data[column].isna().sum())
+
+
+def check_unseen_categories(
+    train_data: pd.DataFrame, test_data: pd.DataFrame, column: str
+) -> bool:
+    """Check that all non-null categories in test_data[column] exist in train_data[column]."""
+    train_categories = set(train_data[column].dropna().unique())
+    test_categories = set(test_data[column].dropna().unique())
+    return len(test_categories - train_categories) == 0
+
 parser = argparse.ArgumentParser(
     description="Paramétrisation du nombre d'arbres du modèle LightGBM"
 )
@@ -98,12 +111,17 @@ con = duckdb.connect(database=":memory:")
 dvf_attributs = dvf.drop(columns="geometry")
 
 # Check la structure de code_commune: 5 caractères qui commencent par le code département
-bad = con.sql("""
+"""bad = con.sql("""
     SELECT COUNT(*) AS n_bad
     FROM dvf_attributs
     WHERE length(code_commune) <> 5
     OR NOT starts_with(code_commune, code_departement)
-""").fetchall()[0][0]
+""").fetchall()[0][0]"""
+
+if check_code_commune_formatting(dvf_attributs):
+    print("Test 'code_commune' OK: toujours 5 caractères commençant par le département")
+else:
+    print("Problème dans la colonne code_commune: certains codes sont mal formés.")
 
 if bad == 0:
     print("Test 'code_commune' OK: toujours 5 caractères commençant par le département")
